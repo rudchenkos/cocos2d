@@ -1,15 +1,14 @@
 package org.cocos2d.opengl;
 
+import android.app.Activity;
+import android.content.Context;
+import android.util.AttributeSet;
+import android.view.MotionEvent;
 import org.cocos2d.events.CCTouchDispatcher;
 import org.cocos2d.nodes.CCDirector;
 import org.cocos2d.types.CGSize;
 
-import android.app.Activity;
-import android.content.Context;
-import android.view.MotionEvent;
-
 public class CCGLSurfaceView extends GLSurfaceView {
-	private static final int VIEWID = 0x1235;
     // private static final String LOG_TAG = CCGLSurfaceView.class.getSimpleName();
     private CCTouchDispatcher mDispatcher;
 
@@ -17,14 +16,21 @@ public class CCGLSurfaceView extends GLSurfaceView {
 
     public CCGLSurfaceView(Context context) {
         super(context);
+        init();
+    }
 
-        CCDirector.theApp = (Activity) context;
+    public CCGLSurfaceView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        init();
+    }
+
+    private void init() {
+        CCDirector.theApp = (Activity) getContext();
 
         mDispatcher = CCTouchDispatcher.sharedDispatcher();
 
         setFocusable(true);
         setFocusableInTouchMode(true);
-        this.setId(VIEWID);
 
         // add this to resolve Samsung's Galaxy opengl problem
         //  here for reference.
@@ -52,7 +58,7 @@ public class CCGLSurfaceView extends GLSurfaceView {
         		}
         );*/
     }
-    
+
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
     	super.onLayout(changed, left, top, right, bottom);
