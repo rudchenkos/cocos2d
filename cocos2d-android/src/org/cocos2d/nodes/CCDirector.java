@@ -1491,6 +1491,16 @@ public class CCDirector implements GLSurfaceView.Renderer {
 		return CCKeyDispatcher.sharedDispatcher().getDispatchEvents();
 	}
 
+    private boolean textureDownscaleEnabled = true;
+
+    public boolean isTextureDownscaleEnabled() {
+        return textureDownscaleEnabled;
+    }
+
+    public void setTextureDownscaleEnabled(boolean textureDownscaleEnabled) {
+        this.textureDownscaleEnabled = textureDownscaleEnabled;
+    }
+
     public static GL10 gl;
 }
 

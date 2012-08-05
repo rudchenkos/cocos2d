@@ -215,29 +215,30 @@ public class CCTexture2D implements Resource {
         int width = toPow2((int) imageSize.width);
         int height = toPow2((int) imageSize.height);
 
-        boolean needDownScale = false;
         float factor = 1;
-        while (width > kMaxTextureSize || height > kMaxTextureSize) {
-            width /= 2;
-            height /= 2;
-//            transform = transform.getTransformScale(0.5f, 0.5f);
-            imageSize.width *= 0.5f;
-            imageSize.height *= 0.5f;
-            
-            factor *= 2;
-            
-            needDownScale = true;
-        }
-        
-        if(needDownScale) {
-        	Bitmap bitmap = Bitmap.createScaledBitmap(image, (int)imageSize.width, (int)imageSize.height, false);
-        	image.recycle();
-        	image = bitmap;
+        if (CCDirector.sharedDirector().isTextureDownscaleEnabled()) {
+            boolean needDownScale = false;
+            while (width > kMaxTextureSize || height > kMaxTextureSize) {
+                width /= 2;
+                height /= 2;
+    //            transform = transform.getTransformScale(0.5f, 0.5f);
+                imageSize.width *= 0.5f;
+                imageSize.height *= 0.5f;
+
+                factor *= 2;
+
+                needDownScale = true;
+            }
+
+            if(needDownScale) {
+                Bitmap bitmap = Bitmap.createScaledBitmap(image, (int)imageSize.width, (int)imageSize.height, false);
+                image.recycle();
+                image = bitmap;
+            }
         }
 
         if (imageSize.width != width || imageSize.height != height) {
-            Bitmap bitmap = Bitmap.createBitmap(width, height,
-                    image.hasAlpha() ? image.getConfig() : Bitmap.Config.RGB_565); //Bitmap.Config.ARGB_8888
+            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(bitmap);
             canvas.drawBitmap(image, 0, 0, null);
             image.recycle();
