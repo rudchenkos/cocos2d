@@ -408,17 +408,17 @@ public class CCTexture2D implements Resource {
         int textHeight = (int)(ascent + descent);
         int spacing = (int) Math.ceil((ascent + descent) * 0.1f);
 
-        int width = toPow2((int)dimensions.width);
-        int height = toPow2((int) dimensions.height);
+        ArrayList<String> wrapped = WrapText(textPaint, text, dimensions.width);
+        float blockHeight = (ascent + descent) * wrapped.size();
+
+        final CGSize realDimensions = CGSize.make(dimensions.width, dimensions.height == Float.MAX_VALUE ? blockHeight : dimensions.height);
+        int width = toPow2((int) realDimensions.width);
+        int height = toPow2((int) realDimensions.height);
 
         Bitmap.Config config = Bitmap.Config.ALPHA_8;
         Bitmap bitmap = Bitmap.createBitmap(width, height, config);
         Canvas canvas = new Canvas(bitmap);
         bitmap.eraseColor(Color.TRANSPARENT);
-
-        ArrayList<String> wrapped = WrapText(textPaint, text, dimensions.width);
-        
-        float blockHeight = (ascent + descent) * wrapped.size();
 
         for(int i = 0; i < wrapped.size(); ++i)
         {
@@ -431,11 +431,11 @@ public class CCTexture2D implements Resource {
 	                offset = 0;
 	                break;
 	            case CENTER:
-	            	offset = (dimensions.width - textPaint.measureText(str)) * 0.5f;
-	            	vOffset = (dimensions.height - blockHeight) * 0.5f;
+	            	offset = (realDimensions.width - textPaint.measureText(str)) * 0.5f;
+	            	vOffset = (realDimensions.height - blockHeight) * 0.5f;
 	                break;
 	            case RIGHT:
-	            	offset = (dimensions.width - textPaint.measureText(str));
+	            	offset = (realDimensions.width - textPaint.measureText(str));
 	                break;
 	        }
 
@@ -445,7 +445,7 @@ public class CCTexture2D implements Resource {
 	                textPaint);
         }
 
-        init(bitmap, dimensions, dimensions);
+        init(bitmap, realDimensions, realDimensions);
     }
 
     protected ArrayList<String> WrapText(Paint textPaint, String text, float width)
