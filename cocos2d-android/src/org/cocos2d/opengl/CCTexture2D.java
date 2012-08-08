@@ -454,34 +454,39 @@ public class CCTexture2D implements Resource {
     {
         float spaceLeft = width;
 
-        String [] words = text.split(" ");
+        String [] tokens = text.split(" ");
         ArrayList<String> lines = new ArrayList<String>();
         float spaceWidth = textPaint.measureText(" ");
         StringBuilder tempLine = new StringBuilder("");
 
-        for(String word : words)
+        for(String token : tokens)
         {
-            float wordWidth = textPaint.measureText(word);
+            final String[] words = token.split("\n|\r\n");
 
-            if (wordWidth > spaceLeft) {
-            	if(tempLine.length() > 0) {
-                	tempLine.deleteCharAt(tempLine.length() - 1);
+            for (int i = 0; i < words.length; ++i) {
+                final String word = words[i];
+                float wordWidth = textPaint.measureText(word);
+
+                if (wordWidth > spaceLeft || i > 0) {
+                    if(tempLine.length() > 0) {
+                        tempLine.deleteCharAt(tempLine.length() - 1);
+                    }
+
+                    lines.add(tempLine.toString());
+
+                    tempLine = new StringBuilder("");
+                    tempLine.append(word);
+
+                    spaceLeft = width - (wordWidth + spaceWidth);
                 }
-            	
-                lines.add(tempLine.toString());
-                
-                tempLine = new StringBuilder("");
-                tempLine.append(word);
+                else
+                {
+                    tempLine.append(word);
+                    spaceLeft -= (wordWidth + spaceWidth);
+                }
 
-                spaceLeft = width - (wordWidth + spaceWidth);
+                tempLine.append(" ");
             }
-            else
-            {
-                tempLine.append(word);
-                spaceLeft -= (wordWidth + spaceWidth);
-            }
-
-            tempLine.append(" ");
         }
         
         if(tempLine.length() > 0) {
