@@ -411,7 +411,9 @@ public class CCTexture2D implements Resource {
         ArrayList<String> wrapped = WrapText(textPaint, text, dimensions.width);
         float blockHeight = (ascent + descent) * wrapped.size();
 
-        final CGSize realDimensions = CGSize.make(dimensions.width, dimensions.height == Float.MAX_VALUE ? blockHeight : dimensions.height);
+        final CGSize realDimensions = CGSize.make(dimensions.width,
+                dimensions.height == Float.MAX_VALUE ? blockHeight + spacing * wrapped.size() : dimensions.height);
+
         int width = toPow2((int) realDimensions.width);
         int height = toPow2((int) realDimensions.height);
 
