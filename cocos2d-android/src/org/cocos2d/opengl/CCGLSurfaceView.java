@@ -2,6 +2,7 @@ package org.cocos2d.opengl;
 
 import android.app.Activity;
 import android.content.Context;
+import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import org.cocos2d.events.CCTouchDispatcher;
