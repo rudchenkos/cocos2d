@@ -81,7 +81,7 @@
     <import file="${sdk.dir}/tools/ant/build.xml" />
 
     <target name="-post-compile">
-      <jar destfile="libs/cocos2d-android.jar">
+      <jar destfile="dist/cocos2d-android.jar">
         <fileset dir="bin/classes" includes="**/*.class"/>
         <fileset dir="." includes="assets/fps_images.png"/>
       </jar>
