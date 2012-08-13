@@ -1,12 +1,8 @@
 package org.cocos2d.nodes;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-
-import javax.microedition.khronos.opengles.GL10;
-
+import android.os.Build;
+import android.util.Log;
+import android.view.MotionEvent;
 import org.cocos2d.actions.CCActionManager;
 import org.cocos2d.actions.CCScheduler;
 import org.cocos2d.actions.UpdateCallback;
@@ -26,9 +22,11 @@ import org.cocos2d.utils.Util5;
 import org.cocos2d.utils.javolution.MathLib;
 import org.cocos2d.utils.pool.OneClassPool;
 
-import android.os.Build;
-import android.util.Log;
-import android.view.MotionEvent;
+import javax.microedition.khronos.opengles.GL10;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 /** CCNode is the main element. 
  Anything thats gets drawn or contains things that get drawn is a CCNode.
@@ -118,7 +116,11 @@ public class CCNode {
 	// scaling factors
     protected float scaleX_;
     protected float scaleY_;
-    
+
+    // Opacity 0..1
+    protected float opacity_ = 1.0f;
+    protected float effectiveOpacity_ = 1.0f;
+    protected float lastEffectiveOpacity_ = Float.NaN;
 
     /** The scale factor of the node. 
        1.0 is the default scale factor. It only modifies the X scale factor.
@@ -718,6 +720,12 @@ public class CCNode {
         if (!visible_)
             return;
 
+        effectiveOpacity_ = parent_ != null ? parent_.effectiveOpacity_ * opacity_ : opacity_;
+        if (effectiveOpacity_ != lastEffectiveOpacity_) {
+            lastEffectiveOpacity_ = effectiveOpacity_;
+            onEffectiveOpacityChanged();
+        }
+
         gl.glPushMatrix();
 
         if (grid_ != null && grid_.isActive()) {
@@ -1192,7 +1200,7 @@ public class CCNode {
     	CGPoint point = pool.get();
     	
     	int action = event.getAction();
-		int pid = action >> MotionEvent.ACTION_POINTER_ID_SHIFT;
+		int pid = action >> MotionEvent.ACTION_POINTER_INDEX_SHIFT;
         if(Build.VERSION.SDK_INT >= 5) {
         	CCDirector.sharedDirector().convertToGL(Util5.getX(event, pid), Util5.getY(event, pid), point);
         } else {
@@ -1210,7 +1218,7 @@ public class CCNode {
      */
     public void convertTouchToNodeSpace(MotionEvent event, CGPoint ret) {
     	int action = event.getAction();
-		int pid = action >> MotionEvent.ACTION_POINTER_ID_SHIFT;
+		int pid = action >> MotionEvent.ACTION_POINTER_INDEX_SHIFT;
         if(Build.VERSION.SDK_INT >= 5) {
         	CCDirector.sharedDirector().convertToGL(Util5.getX(event, pid), Util5.getY(event, pid), ret);
         } else {
@@ -1228,7 +1236,7 @@ public class CCNode {
     	CGPoint point = pool.get();
     	
     	int action = event.getAction();
-		int pid = action >> MotionEvent.ACTION_POINTER_ID_SHIFT;
+		int pid = action >> MotionEvent.ACTION_POINTER_INDEX_SHIFT;
         if(Build.VERSION.SDK_INT >= 5) {
         	CCDirector.sharedDirector().convertToGL(Util5.getX(event, pid), Util5.getY(event, pid), point);
         } else {
@@ -1395,6 +1403,17 @@ public class CCNode {
             int i = (int) f;
             return (float)i;
         }
+    }
+
+    public float getOpacity() {
+        return opacity_;
+    }
+
+    public void setOpacity(float opacity) {
+        this.opacity_ = opacity;
+    }
+
+    protected void onEffectiveOpacityChanged() {
     }
 }
 

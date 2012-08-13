@@ -1,11 +1,5 @@
 package org.cocos2d.nodes;
 
-import static javax.microedition.khronos.opengles.GL10.GL_TEXTURE_2D;
-import static javax.microedition.khronos.opengles.GL10.GL_TEXTURE_COORD_ARRAY;
-import static javax.microedition.khronos.opengles.GL10.GL_VERTEX_ARRAY;
-
-import javax.microedition.khronos.opengles.GL10;
-
 import org.cocos2d.config.ccConfig;
 import org.cocos2d.opengl.CCTexture2D;
 import org.cocos2d.protocols.CCRGBAProtocol;
@@ -13,6 +7,10 @@ import org.cocos2d.types.CGPoint;
 import org.cocos2d.types.CGSize;
 import org.cocos2d.types.ccBlendFunc;
 import org.cocos2d.types.ccColor3B;
+
+import javax.microedition.khronos.opengles.GL10;
+
+import static javax.microedition.khronos.opengles.GL10.*;
 
 
 public class CCTextureNode extends CCNode implements CCRGBAProtocol, CCNode.CocosNodeSize {
@@ -26,7 +24,6 @@ public class CCTextureNode extends CCNode implements CCRGBAProtocol, CCNode.Coco
     private ccBlendFunc blendFunc_;
 
     // texture RGBA
-    private int opacity_;
     private ccColor3B color_;
 
     boolean opacityModifyRGB_;
@@ -46,17 +43,6 @@ public class CCTextureNode extends CCNode implements CCRGBAProtocol, CCNode.Coco
 
     }
 
-    /**
-     * conforms to CocosNodeOpacity and CocosNodeRGB protocol
-     */
-    public int getOpacity() {
-        return opacity_;
-    }
-
-    public void setOpacity(int opacity) {
-        opacity_ = opacity;
-    }
-
     public void setColor(ccColor3B color) {
         color_.r = color.r;
         color_.g = color.g;
@@ -68,7 +54,6 @@ public class CCTextureNode extends CCNode implements CCRGBAProtocol, CCNode.Coco
     }
 
     public CCTextureNode() {
-        opacity_ = 255;
         color_ = new ccColor3B(255, 255, 255);
         setAnchorPoint(CGPoint.make(0.5f, 0.5f));
         blendFunc_ = new ccBlendFunc(ccConfig.CC_BLEND_SRC, ccConfig.CC_BLEND_DST);
@@ -82,7 +67,7 @@ public class CCTextureNode extends CCNode implements CCRGBAProtocol, CCNode.Coco
 
         gl.glEnable(GL_TEXTURE_2D);
 
-        gl.glColor4f(color_.r / 255f, color_.g / 255f, color_.b / 255f, opacity_ / 255f);
+        gl.glColor4f(color_.r / 255f, color_.g / 255f, color_.b / 255f, effectiveOpacity_);
 
         boolean newBlend = false;
         if (blendFunc_.src != ccConfig.CC_BLEND_SRC || blendFunc_.dst != ccConfig.CC_BLEND_DST) {

@@ -15,15 +15,6 @@ public interface CCRGBAProtocol {
      */
     public ccColor3B getColor();
 
-    /// returns the opacity
-    public int getOpacity();
-
-    /** sets the opacity.
-     @warning If the the texture has premultiplied alpha then, the R, G and B channels will be modifed.
-     Values goes from 0 to 255, where 255 means fully opaque.
-     */
-    public void setOpacity(int opacity);
-
     /** sets the premultipliedAlphaOpacity property.
      If set to NO then opacity will be applied as: glColor(R,G,B,opacity);
      If set to YES then oapcity will be applied as: glColor(opacity, opacity, opacity, opacity );

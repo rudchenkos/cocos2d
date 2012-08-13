@@ -1,11 +1,5 @@
 package org.cocos2d.layers;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
-
-import javax.microedition.khronos.opengles.GL10;
-
 import org.cocos2d.config.ccConfig;
 import org.cocos2d.nodes.CCDirector;
 import org.cocos2d.nodes.CCNode;
@@ -14,6 +8,11 @@ import org.cocos2d.types.CGSize;
 import org.cocos2d.types.ccBlendFunc;
 import org.cocos2d.types.ccColor3B;
 import org.cocos2d.types.ccColor4B;
+
+import javax.microedition.khronos.opengles.GL10;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 
 //
 // CCColorLayer
@@ -26,10 +25,8 @@ import org.cocos2d.types.ccColor4B;
  */
 public class CCColorLayer extends CCLayer 
         implements CCRGBAProtocol, CCNode.CocosNodeSize {
-    /** Opacity: conforms to CCRGBAProtocol protocol */
+    /** Color: conforms to CCRGBAProtocol protocol */
     protected ccColor3B color_;
-    /** Opacity: conforms to CCRGBAProtocol protocol */
-    protected int opacity_;
     /** BlendFunction. Conforms to CCBlendProtocol protocol */
 	protected ccBlendFunc	blendFunc_;
 
@@ -68,7 +65,7 @@ public class CCColorLayer extends CCLayer
         squareColors_ = sbb.asFloatBuffer();
 
         color_ = new ccColor3B(color.r, color.g, color.b);
-        opacity_ = color.a;
+        opacity_ = color.a / 255f;
 		blendFunc_ = new ccBlendFunc(ccConfig.CC_BLEND_SRC, ccConfig.CC_BLEND_DST);
 
         for (int i = 0; i < (4 * 2); i++) {
@@ -76,8 +73,13 @@ public class CCColorLayer extends CCLayer
         }
         squareVertices_.position(0);
 
-        updateColor();
         setContentSize(CGSize.make(w, h));
+    }
+
+    @Override
+    protected void onEffectiveOpacityChanged() {
+        super.onEffectiveOpacityChanged();
+        updateColor();
     }
 
     private void updateColor() {
@@ -93,7 +95,7 @@ public class CCColorLayer extends CCLayer
                     squareColors_.put(i, color_.b / 255f);
                     break;
                 default:
-                    squareColors_.put(i, opacity_ / 255f);
+                    squareColors_.put(i, effectiveOpacity_);
             }
             squareColors_.position(0);
         }
@@ -114,7 +116,7 @@ public class CCColorLayer extends CCLayer
         if (blendFunc_.src != ccConfig.CC_BLEND_SRC || blendFunc_.dst != ccConfig.CC_BLEND_DST) {
             newBlend = true;
             gl.glBlendFunc(blendFunc_.src, blendFunc_.dst);
-        } else if (opacity_ != 255) {
+        } else if (effectiveOpacity_ < 1) {
             newBlend = true;
             gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
         }
@@ -137,16 +139,6 @@ public class CCColorLayer extends CCLayer
     public void setColor(ccColor3B color) {
         color_ = ccColor3B.ccc3(color.r, color.g, color.b);
         updateColor();
-    }
-
-    // Opacity Protocol
-    public void setOpacity(int o) {
-        opacity_ = o;
-        updateColor();
-    }
-
-    public int getOpacity() {
-        return opacity_;
     }
 
     // Size protocol
@@ -193,14 +185,11 @@ public class CCColorLayer extends CCLayer
 
 	@Override
 	public boolean doesOpacityModifyRGB() {
-		// TODO Auto-generated method stub
-		return false;
+		return true;
 	}
 
 	@Override
 	public void setOpacityModifyRGB(boolean b) {
-		// TODO Auto-generated method stub
-		
 	}
 }
 

@@ -1,7 +1,5 @@
 package org.cocos2d.transitions;
 
-import javax.microedition.khronos.opengles.GL10;
-
 import org.cocos2d.actions.instant.CCCallFunc;
 import org.cocos2d.actions.interval.CCFadeTo;
 import org.cocos2d.actions.interval.CCIntervalAction;
@@ -13,6 +11,8 @@ import org.cocos2d.opengl.CCRenderTexture;
 import org.cocos2d.types.CGSize;
 import org.cocos2d.types.ccBlendFunc;
 import org.cocos2d.types.ccColor4B;
+
+import javax.microedition.khronos.opengles.GL10;
 
 /**
  CCCrossFadeTransition:
@@ -82,8 +82,8 @@ public class CCCrossFadeTransition extends CCTransitionScene {
 		layer.addChild(outTexture);
 
 		// initial opacity:
-		inTexture.getSprite().setOpacity(255);
-		outTexture.getSprite().setOpacity(255);
+		inTexture.getSprite().setOpacity(1);
+		outTexture.getSprite().setOpacity(1);
 
 		// create the blend action
 		CCIntervalAction layerAction = CCSequence.actions(

@@ -1,7 +1,5 @@
 package org.cocos2d.nodes;
 
-import javax.microedition.khronos.opengles.GL10;
-
 import org.cocos2d.config.ccConfig;
 import org.cocos2d.opengl.CCTexture2D;
 import org.cocos2d.opengl.CCTextureAtlas;
@@ -10,6 +8,8 @@ import org.cocos2d.protocols.CCTextureProtocol;
 import org.cocos2d.types.CGSize;
 import org.cocos2d.types.ccBlendFunc;
 import org.cocos2d.types.ccColor3B;
+
+import javax.microedition.khronos.opengles.GL10;
 
 /**
  * AtlasNode is a subclass of CocosNode that implements CocosNodeOpacity, CocosNodeRGB and
@@ -55,7 +55,6 @@ public abstract class CCAtlasNode extends CCNode
     ccBlendFunc blendFunc_;
 
     // texture RGBA
-    int opacity_;
     ccColor3B color_;
 	ccColor3B	colorUnmodified_;
     boolean opacityModifyRGB_;
@@ -66,7 +65,6 @@ public abstract class CCAtlasNode extends CCNode
     	
         itemWidth = w;
         itemHeight = h;
-        opacity_ = 255;
         color_ = ccColor3B.ccWHITE;
         colorUnmodified_ = ccColor3B.ccWHITE;
         opacityModifyRGB_ = true;
@@ -106,7 +104,7 @@ public abstract class CCAtlasNode extends CCNode
     	// Unneeded states: GL_COLOR_ARRAY
     	gl.glDisableClientState(GL10.GL_COLOR_ARRAY);
     	
-        gl.glColor4f(color_.r / 255f, color_.g / 255f, color_.b / 255f, opacity_ / 255f);
+        gl.glColor4f(color_.r / 255f, color_.g / 255f, color_.b / 255f, effectiveOpacity_);
 
         boolean newBlend = false;
         if (blendFunc_.src != ccConfig.CC_BLEND_SRC || blendFunc_.dst != ccConfig.CC_BLEND_DST) {
@@ -129,8 +127,8 @@ public abstract class CCAtlasNode extends CCNode
     	gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
     }
     
-    /** conforms to CCRGBAProtocol protocol */
-    public void setOpacity(int opacity) {
+    @Override
+    public void setOpacity(float opacity) {
         opacity_ = opacity;
 
 	    // special opacity for premultiplied textures
@@ -139,18 +137,14 @@ public abstract class CCAtlasNode extends CCNode
         }
     }
 
-    public int getOpacity() {
-        return opacity_;
-    }
-
     /** conforms to CCRGBAProtocol protocol */
     public void setColor(ccColor3B color) {
         color_ = new ccColor3B(color);
         colorUnmodified_ = new ccColor3B(color);
         if( opacityModifyRGB_ ){
-            color_.r = color.r * opacity_/255;
-            color_.g = color.g * opacity_/255;
-            color_.b = color.b * opacity_/255;
+            color_.r = (int) (color.r * opacity_);
+            color_.g = (int) (color.g * opacity_);
+            color_.b = (int) (color.b * opacity_);
         }	
     }
 

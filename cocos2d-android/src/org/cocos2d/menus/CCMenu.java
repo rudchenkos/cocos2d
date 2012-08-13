@@ -1,7 +1,6 @@
 package org.cocos2d.menus;
 
-import java.util.ArrayList;
-
+import android.view.MotionEvent;
 import org.cocos2d.config.ccMacros;
 import org.cocos2d.events.CCTouchDispatcher;
 import org.cocos2d.layers.CCLayer;
@@ -16,7 +15,7 @@ import org.cocos2d.types.util.CGPointUtil;
 import org.cocos2d.types.util.PoolHolder;
 import org.cocos2d.utils.pool.OneClassPool;
 
-import android.view.MotionEvent;
+import java.util.ArrayList;
 
 /** A CCMenu
  * 
@@ -36,8 +35,6 @@ public class CCMenu extends CCLayer {
 
     private MenuState   state;
 
-    /** conforms to CCRGBAProtocol protocol */
-    private int        opacity_;
     /** conforms to CCRGBAProtocol protocol */
     private ccColor3B   color_;
 
@@ -93,20 +90,6 @@ public class CCMenu extends CCLayer {
     @Override
     public CCNode addChild(CCNode child, int z, int tag) {
     	return super.addChild((CCMenuItem)child, z, tag);
-    }
-
-    /** Override synthesized setOpacity to recurse items */
-    public void setOpacity(int newOpacity) {
-        opacity_ = newOpacity;
-        if (children_ != null) {
-        	for (CCNode item: children_) {
-        		((CCRGBAProtocol)item).setOpacity(opacity_);
-        	}
-        }
-    }
-    
-    public int getOpacity() {
-    	return opacity_;
     }
 
     public void setColor(ccColor3B color) {

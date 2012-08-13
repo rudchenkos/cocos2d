@@ -1,13 +1,13 @@
 package org.cocos2d.menus;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-
 import org.cocos2d.nodes.CCNode;
 import org.cocos2d.protocols.CCRGBAProtocol;
 import org.cocos2d.types.CGPoint;
 import org.cocos2d.types.CGSize;
 import org.cocos2d.types.ccColor3B;
+
+import java.util.ArrayList;
+import java.util.Arrays;
 
 
 /** A CCMenuItemToggle
@@ -29,8 +29,6 @@ public class CCMenuItemToggle extends CCMenuItem {
     	return subItems_;	
     }
     
-    /** conforms with CCRGBAProtocol protocol */
-    private byte opacity_;
     /** conforms with CCRGBAProtocol protocol */
     ccColor3B color_;
 
@@ -103,16 +101,6 @@ public class CCMenuItemToggle extends CCMenuItem {
     /** return the selected item */
     public CCMenuItem selectedItem() {
         return subItems_.get(selectedIndex_);
-    }
-
-    public void setOpacity(byte opacity) {
-        opacity_ = opacity;
-        for (CCMenuItem item : subItems_)
-            ((CCRGBAProtocol) item).setOpacity(opacity);
-    }
-    
-    public byte getOpacity() {
-    	return opacity_;
     }
 
     public void setColor(ccColor3B color) {

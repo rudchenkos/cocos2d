@@ -1,11 +1,11 @@
 package org.cocos2d.menus;
 
-import javax.microedition.khronos.opengles.GL10;
-
 import org.cocos2d.nodes.CCNode;
 import org.cocos2d.protocols.CCRGBAProtocol;
 import org.cocos2d.types.CGSize;
 import org.cocos2d.types.ccColor3B;
+
+import javax.microedition.khronos.opengles.GL10;
 
 /**
  * MenuItemSprite accepts CocosNode<CocosNodeRGBA> objects as items.
@@ -120,14 +120,6 @@ public class CCMenuItemSprite extends CCMenuItem implements CCRGBAProtocol {
         }
     }
 
-    // CocosNodeRGBA protocol
-    public void setOpacity(int opacity) {
-        ((CCRGBAProtocol) normalImage_).setOpacity(opacity);
-        ((CCRGBAProtocol) selectedImage_).setOpacity(opacity);
-        if (disabledImage_ != null)
-            ((CCRGBAProtocol) disabledImage_).setOpacity(opacity);
-    }
-
     public void setColor(ccColor3B color) {
         ((CCRGBAProtocol) normalImage_).setColor(color);
         ((CCRGBAProtocol) selectedImage_).setColor(color);
@@ -137,10 +129,6 @@ public class CCMenuItemSprite extends CCMenuItem implements CCRGBAProtocol {
 
     public ccColor3B getColor() {
         return ((CCRGBAProtocol) normalImage_).getColor();
-    }
-
-    public int getOpacity() {
-        return ((CCRGBAProtocol) normalImage_).getOpacity();
     }
 
     @Override

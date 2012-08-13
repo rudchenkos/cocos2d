@@ -1,7 +1,5 @@
 package org.cocos2d.menus;
 
-import javax.microedition.khronos.opengles.GL10;
-
 import org.cocos2d.actions.base.CCAction;
 import org.cocos2d.actions.interval.CCScaleTo;
 import org.cocos2d.nodes.CCLabel;
@@ -9,6 +7,8 @@ import org.cocos2d.nodes.CCNode;
 import org.cocos2d.protocols.CCLabelProtocol;
 import org.cocos2d.protocols.CCRGBAProtocol;
 import org.cocos2d.types.ccColor3B;
+
+import javax.microedition.khronos.opengles.GL10;
 
 
 /** An abstract class for "label" CCMenuItemLabel items 
@@ -45,14 +45,6 @@ public class CCMenuItemLabel extends CCMenuItem implements CCRGBAProtocol {
         setLabel(label);
         colorBackup = new ccColor3B(255, 255, 255);
         disabledColor_ = new ccColor3B(126, 126, 126);
-    }
-
-    public void setOpacity(int opacity) {
-        ((CCRGBAProtocol) label_).setOpacity(opacity);
-    }
-
-    public int getOpacity() {
-        return ((CCRGBAProtocol) label_).getOpacity();
     }
 
     public void setColor(ccColor3B color) {

@@ -1,7 +1,5 @@
 package org.cocos2d.actions.interval;
 
-import org.cocos2d.protocols.CCRGBAProtocol;
-
 /** Fades In an object that implements the CCRGBAProtocol protocol.
  * It modifies the opacity from 0 to 255.
  *  The "reverse" of this action is FadeOut
@@ -23,7 +21,7 @@ public class CCFadeIn extends CCIntervalAction {
 
     @Override
     public void update(float t) {
-        ((CCRGBAProtocol) target).setOpacity((int) (255.0f * t));
+        target.setOpacity(t);
     }
 
     @Override

@@ -1,11 +1,5 @@
 package org.cocos2d.layers;
 
-import java.nio.IntBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-
-import javax.microedition.khronos.opengles.GL10;
-
 import org.cocos2d.nodes.CCNode;
 import org.cocos2d.nodes.CCSprite;
 import org.cocos2d.nodes.CCSpriteSheet;
@@ -14,6 +8,11 @@ import org.cocos2d.types.CGPoint;
 import org.cocos2d.types.CGRect;
 import org.cocos2d.types.CGSize;
 import org.cocos2d.utils.CCFormatter;
+
+import javax.microedition.khronos.opengles.GL10;
+import java.nio.IntBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 /*
  * TMX Tiled Map support:
@@ -68,8 +67,6 @@ public class CCTMXLayer extends CCSpriteSheet {
 
 	/** properties from the layer. They can be added using Tiled */
 	public	HashMap<String, String>		properties;
-
-	int					opacity_; // TMX Layer supports opacity
 
 	int					minGID_;
 	int					maxGID_;
@@ -169,7 +166,6 @@ public class CCTMXLayer extends CCSpriteSheet {
 				tile.setPosition(positionAt(pos));
 				tile.setVertexZ(vertexZForPos(pos));
 				tile.setAnchorPoint(CGPoint.zero());
-				tile.setOpacity(opacity_);
 
 				int indexForZ = atlasIndexForExistantZ(z);
 				addSpriteWithoutQuad(tile, indexForZ, z);
@@ -441,7 +437,6 @@ public class CCTMXLayer extends CCSpriteSheet {
 		reusedTile_.setPosition(positionAt(pos));
 		reusedTile_.setVertexZ(vertexZForPos(pos));
 		reusedTile_.setAnchorPoint(CGPoint.zero());
-		reusedTile_.setOpacity(opacity_);
 
 		// optimization:
 		// The difference between appendTileForGID and insertTileforGID is that append is faster, since
@@ -472,7 +467,6 @@ public class CCTMXLayer extends CCSpriteSheet {
 		reusedTile_.setPosition(positionAt(pos));
 		reusedTile_.setVertexZ(vertexZForPos(pos));
 		reusedTile_.setAnchorPoint(CGPoint.zero());
-		reusedTile_.setOpacity(opacity_);
 
 		// get atlas index
 		int indexForZ = atlasIndexForNewZ(z);
@@ -509,7 +503,6 @@ public class CCTMXLayer extends CCSpriteSheet {
 		reusedTile_.setPosition(positionAt(pos));
 		reusedTile_.setVertexZ(vertexZForPos(pos));
 		reusedTile_.setAnchorPoint(CGPoint.zero());
-		reusedTile_.setOpacity(opacity_);
 
 		// get atlas index
 		int indexForZ = atlasIndexForExistantZ(z);

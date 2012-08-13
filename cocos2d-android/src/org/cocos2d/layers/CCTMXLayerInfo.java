@@ -1,10 +1,10 @@
 package org.cocos2d.layers;
 
-import java.nio.IntBuffer;
-import java.util.HashMap;
-
 import org.cocos2d.types.CGPoint;
 import org.cocos2d.types.CGSize;
+
+import java.nio.IntBuffer;
+import java.util.HashMap;
 
 /* CCTMXLayerInfo contains the information about the layers like:
  - Layer name
@@ -19,7 +19,7 @@ public class CCTMXLayerInfo  {
 	CGSize			layerSize;
 	IntBuffer		tiles;
 	boolean			visible;
-	int				opacity	= 255;
+	float			opacity = 1;
 	boolean			ownTiles;
 	int				minGID;
 	int				maxGID;

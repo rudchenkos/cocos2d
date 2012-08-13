@@ -1,7 +1,5 @@
 package org.cocos2d.nodes;
 
-import javax.microedition.khronos.opengles.GL10;
-
 import org.cocos2d.config.ccConfig;
 import org.cocos2d.protocols.CCLabelProtocol;
 import org.cocos2d.types.ccBlendFunc;
@@ -9,6 +7,8 @@ import org.cocos2d.types.ccQuad2;
 import org.cocos2d.types.ccQuad3;
 import org.cocos2d.types.util.PoolHolder;
 import org.cocos2d.utils.javolution.TextBuilder;
+
+import javax.microedition.khronos.opengles.GL10;
 
 /** CCLabelAtlas is a subclass of CCAtlasNode.
  
@@ -107,7 +107,7 @@ public class CCLabelAtlas extends CCAtlasNode
         // Needed states: GL_TEXTURE_2D, GL_VERTEX_ARRAY, GL_TEXTURE_COORD_ARRAY
         // Unneeded states: GL_COLOR_ARRAY
         gl.glDisableClientState(GL10.GL_COLOR_ARRAY);
-	    gl.glColor4f(color_.r/255.f, color_.g/255.f, color_.b/255.f, opacity_/255.f);
+	    gl.glColor4f(color_.r/255.f, color_.g/255.f, color_.b/255.f, effectiveOpacity_);
 
         boolean newBlend = false;
         if( blendFunc_.src != ccConfig.CC_BLEND_SRC || blendFunc_.dst != ccConfig.CC_BLEND_DST ) {

@@ -1,28 +1,20 @@
 package org.cocos2d.nodes;
 
-import java.nio.FloatBuffer;
-import java.util.Arrays;
-import java.util.HashMap;
-
-import javax.microedition.khronos.opengles.GL10;
-
+import android.graphics.Bitmap;
 import org.cocos2d.config.ccConfig;
 import org.cocos2d.config.ccMacros;
 import org.cocos2d.opengl.CCTexture2D;
 import org.cocos2d.opengl.CCTextureAtlas;
 import org.cocos2d.protocols.CCRGBAProtocol;
 import org.cocos2d.protocols.CCTextureProtocol;
-import org.cocos2d.types.CGAffineTransform;
-import org.cocos2d.types.CGPoint;
-import org.cocos2d.types.CGRect;
-import org.cocos2d.types.CGSize;
-import org.cocos2d.types.ccBlendFunc;
-import org.cocos2d.types.ccColor3B;
-import org.cocos2d.types.ccColor4B;
+import org.cocos2d.types.*;
 import org.cocos2d.utils.BufferProvider;
 import org.cocos2d.utils.BufferUtils;
 
-import android.graphics.Bitmap;
+import javax.microedition.khronos.opengles.GL10;
+import java.nio.FloatBuffer;
+import java.util.Arrays;
+import java.util.HashMap;
 
 /** CCSprite is a 2d image ( http://en.wikipedia.org/wiki/Sprite_(computer_graphics) )
  *
@@ -96,23 +88,6 @@ public class CCSprite extends CCNode implements CCRGBAProtocol, CCTextureProtoco
     */
 	public boolean flipX_;
 
-	// opacity and RGB protocol
-    /** opacity: conforms to CCRGBAProtocol protocol */
-    int		opacity_;
-
-    public int getOpacity() {
-        return opacity_;
-    }
-
-    public void setOpacity(int anOpacity) {
-        opacity_			= anOpacity;
-
-        // special opacity for premultiplied textures
-        if( opacityModifyRGB_ )
-            setColor(colorUnmodified_);
-        updateColor();
-    }
-
     /** RGB colors: conforms to CCRGBAProtocol protocol */
 	ccColor3B	color_;
 	ccColor3B	colorUnmodified_;
@@ -136,14 +111,13 @@ public class CCSprite extends CCNode implements CCRGBAProtocol, CCTextureProtoco
     public void setColor(ccColor3B color3) {
         color_.set(color3);
         colorUnmodified_.set(color3);
+        lastEffectiveOpacity_ = Float.NaN; // Refresh
 
         if( opacityModifyRGB_ ){
-            color_.r = color3.r * opacity_/255;
-            color_.g = color3.g * opacity_/255;
-            color_.b = color3.b * opacity_/255;
+            color_.r = (int) (color3.r * effectiveOpacity_);
+            color_.g = (int) (color3.g * effectiveOpacity_);
+            color_.b = (int) (color3.b * effectiveOpacity_);
         }
-
-        updateColor();
     }
 
 	//
@@ -521,7 +495,6 @@ public class CCSprite extends CCNode implements CCRGBAProtocol, CCTextureProtoco
 		useSelfRender();
 		
 		opacityModifyRGB_			= true;
-		opacity_					= 255;
 		color_                      = new ccColor3B(ccColor3B.ccWHITE);
         colorUnmodified_	        = new ccColor3B(ccColor3B.ccWHITE);
 				
@@ -609,11 +582,21 @@ public class CCSprite extends CCNode implements CCRGBAProtocol, CCTextureProtoco
     
     private static final ccColor4B tmpColor4B = ccColor4B.ccc4(0, 0, 0, 0);
     private static final ccColor4B[] tmpColors = new ccColor4B[] { tmpColor4B, tmpColor4B, tmpColor4B, tmpColor4B };
-    public void updateColor() {		
+
+    @Override
+    protected void onEffectiveOpacityChanged() {
+        super.onEffectiveOpacityChanged();
+        // special opacity for premultiplied textures
+        if( opacityModifyRGB_ )
+            setColor(colorUnmodified_);
+        updateColor();
+    }
+
+    public void updateColor() {
         float tmpR = color_.r/255.f;
         float tmpG = color_.g/255.f;
         float tmpB = color_.b/255.f;
-        float tmpA = opacity_/255.f;
+        float tmpA = effectiveOpacity_;
         
         colors.put(tmpR).put(tmpG).put(tmpB).put(tmpA)
         	  .put(tmpR).put(tmpG).put(tmpB).put(tmpA)
@@ -624,7 +607,10 @@ public class CCSprite extends CCNode implements CCRGBAProtocol, CCTextureProtoco
         // renders using Sprite Manager
         if( usesSpriteSheet_ ) {
             if( atlasIndex != CCSpriteIndexNotInitialized) {
-            	tmpColor4B.r = color_.r; tmpColor4B.g = color_.g; tmpColor4B.b = color_.b; tmpColor4B.a = opacity_;
+            	tmpColor4B.r = color_.r;
+                tmpColor4B.g = color_.g;
+                tmpColor4B.b = color_.b;
+                tmpColor4B.a = (int) (effectiveOpacity_ * 255f);
             	textureAtlas_.updateColor(tmpColors, atlasIndex);
             	
             } else {

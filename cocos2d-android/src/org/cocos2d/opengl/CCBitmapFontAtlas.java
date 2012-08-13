@@ -1,15 +1,5 @@
 package org.cocos2d.opengl;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.ListIterator;
-
-import org.cocos2d.nodes.CCDirector;
 import org.cocos2d.nodes.CCNode;
 import org.cocos2d.nodes.CCSprite;
 import org.cocos2d.nodes.CCSpriteSheet;
@@ -22,6 +12,15 @@ import org.cocos2d.types.ccColor3B;
 import org.cocos2d.utils.ContentHelper;
 import org.cocos2d.utils.collections.IntMap;
 import org.cocos2d.utils.javolution.TextBuilder;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ListIterator;
 
 /** CCBitmapFontAtlas is a subclass of CCSpriteSheet.
 
@@ -442,24 +441,6 @@ public class CCBitmapFontAtlas extends CCSpriteSheet implements CCLabelProtocol,
 	static CCBitmapFontConfiguration parsed;
 	CCBitmapFontConfiguration	configuration_;
 
-	// texture RGBA
-	int		opacity_;
-    /** conforms to CCRGBAProtocol protocol */
-    public int getOpacity() {
-        return opacity_;
-    }
-
-    public void setOpacity(int o) {
-        opacity_ = o;
-
-        int len = children_.size();
-        for (int i = 0; i < len; i++) {
-        	CCNode child = children_.get(i);
-        	CCRGBAProtocol p = (CCRGBAProtocol)child;
-            p.setOpacity(opacity_);
-        }
-    }
-
     ccColor3B	color_;
     /** conforms to CCRGBAProtocol protocol */
     public ccColor3B getColor() {
@@ -498,7 +479,6 @@ public class CCBitmapFontAtlas extends CCSpriteSheet implements CCLabelProtocol,
         configuration_  = parsed;
         // assert configuration_:"Error creating config for BitmapFontAtlas";
 
-        opacity_ = 255;
         color_ = new ccColor3B(ccColor3B.ccWHITE);
 
         contentSize_ = CGSize.zero();
@@ -613,7 +593,7 @@ public class CCBitmapFontAtlas extends CCSpriteSheet implements CCLabelProtocol,
 
 				// restore to default in case they were modified
 				fontChar.setVisible(true);
-				fontChar.setOpacity(255);
+				fontChar.setOpacity(1);
 			}
 
 			float yOffset = configuration_.commonHeight - fontDef.yOffset;
@@ -628,11 +608,6 @@ public class CCBitmapFontAtlas extends CCSpriteSheet implements CCLabelProtocol,
 			fontChar.setOpacityModifyRGB(opacityModifyRGB_);
 			// Color MUST be set before opacity, since opacity might change color if OpacityModifyRGB is on
 			fontChar.setColor(color_);
-
-			// only apply opacity if it is different than 255 )
-			// to prevent modifying the color too (issue #610)
-			if( opacity_ != 255 )
-				fontChar.setOpacity(opacity_);
 
 			if (longestLine < nextFontPositionX)
 				longestLine = nextFontPositionX;
