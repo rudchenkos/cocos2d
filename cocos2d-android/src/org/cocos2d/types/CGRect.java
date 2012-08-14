@@ -283,4 +283,28 @@ public class CGRect {
                 break;
         }
     }
+
+    public float minX() {
+        return origin.x;
+    }
+
+    public float minY() {
+        return origin.y;
+    }
+
+    public float midX() {
+        return origin.x + size.width / 2f;
+    }
+
+    public float midY() {
+        return origin.y + size.height / 2f;
+    }
+
+    public float maxX() {
+        return origin.x + size.width;
+    }
+
+    public float maxY() {
+        return origin.y + size.height;
+    }
 }
