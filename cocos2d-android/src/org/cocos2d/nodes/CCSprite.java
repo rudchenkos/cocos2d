@@ -992,10 +992,10 @@ public class CCSprite extends CCNode implements CCRGBAProtocol, CCTextureProtoco
 //	        texCoords.put(7, bottom); // br v
         }else
         {
-        	float left	= (2*rect.origin.x+1)/(2*atlasWidth);
-        	float right	= left + (rect.size.width*2-2)/(2*atlasWidth);
-        	float top	= (2*rect.origin.y+1)/(2*atlasHeight);
-        	float bottom= top + (rect.size.height*2-2)/(2*atlasHeight);
+        	float left   = (2f * rect.origin.x) / (2f * atlasWidth);
+        	float right	 = left + (rect.size.width * 2f) / (2f * atlasWidth);
+        	float top	 = (2f * rect.origin.y) / (2f * atlasHeight);
+        	float bottom = top + (rect.size.height * 2f) / (2f * atlasHeight);
 	
 	        if( flipX_) {
 	            float tmp = left;
