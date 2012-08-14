@@ -609,7 +609,7 @@ public class CCNode {
         if (child == null)
             return;
 
-        if (children_.contains(child))
+        if (children_ != null && children_.contains(child))
             detachChild(child, cleanup);
     }
 
