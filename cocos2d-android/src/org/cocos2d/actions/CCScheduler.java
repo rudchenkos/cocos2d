@@ -1,15 +1,16 @@
 package org.cocos2d.actions;
 
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.concurrent.ConcurrentHashMap;
-
+import fj.Equal;
+import fj.F;
+import fj.Ord;
+import fj.Unit;
+import fj.data.HashMap;
+import fj.data.List;
+import fj.data.Option;
 import org.cocos2d.config.ccConfig;
-import org.cocos2d.utils.collections.ConcurrentArrayHashMap;
 
-//
-// CCScheduler
-//
+import java.lang.reflect.Method;
+
 /** Scheduler is responsible of triggering the scheduled callbacks.
  You should not use NSTimer. Instead use this class.
  
@@ -23,54 +24,42 @@ import org.cocos2d.utils.collections.ConcurrentArrayHashMap;
 */
 public class CCScheduler {
 
-    // A list double-linked list used for "updates with priority"
-    private static class tListEntry {
+    private static class UpdateCallback {
         // struct	_listEntry *prev, *next;
         public Method impMethod;
-        public UpdateCallback callback; // instead of method invocation
+        public org.cocos2d.actions.UpdateCallback callback; // instead of method invocation
         public Object	target;				// not retained (retained by hashUpdateEntry)
         public int		priority;
         public boolean	paused;
     };
 
-    // Hash Element used for "selectors with interval"
-    private static class tHashSelectorEntry {
-        ArrayList<CCTimer>    timers;
-        Object			target;		// hash key (retained)
-        ArrayList<tListEntry> list;
-        tListEntry 		entry;
-        int	            timerIndex;
-        CCTimer			currentTimer;
-        boolean			currentTimerSalvaged;
-        boolean			paused;
+    private static class TimerSchedules {
+        UpdateCallback entry;
+        List<CCTimer> timers = List.nil();
+        Object target;		// hash key (retained)
+        boolean	paused;
+
         void setPaused(boolean b){
             paused = b;
             if (entry != null){
                 entry.paused = b;
             }
         }
-        // UT_hash_handle  hh;
     }
 
-	//
-	// "updates with priority" stuff
-	//
-	ArrayList<tListEntry>    updatesNeg;	// list of priority < 0
-	ArrayList<tListEntry>    updates0;	// list priority == 0
-	ArrayList<tListEntry>    updatesPos;	// list priority > 0
-		
+    // most of the updates are going to be 0, that's why there
+    // is an special list for updates with priority 0
+    private List<UpdateCallback> updatesNeg = List.nil();	// list of priority < 0
+    private List<UpdateCallback> updates0 = List.nil();	// list priority == 0
+    private List<UpdateCallback> updatesPos = List.nil();	// list priority > 0
+
 	// Used for "selectors with interval"
-	ConcurrentArrayHashMap<Object, tHashSelectorEntry>  hashForSelectors;
-	ConcurrentHashMap<Object, tHashSelectorEntry>  hashForUpdates;
+	HashMap<Object, TimerSchedules> hashForSelectors = HashMap.hashMap();
+	HashMap<Object, TimerSchedules>  hashForUpdates = HashMap.hashMap();
     
-    tListEntry							currentEntry;
-    
-	tHashSelectorEntry	                currentTarget;
-	boolean						        currentTargetSalvaged;
-	
 	// Optimization
 //	Method			    impMethod;
-	String				updateSelector;
+	private final String updateSelector = "update";
 
     /** Modifies the time of all scheduled callbacks.
       You can use this property to create a 'slow motion' or 'fast fordward' effect.
@@ -79,17 +68,11 @@ public class CCScheduler {
       @since v0.8
       @warning It will affect EVERY scheduled selector / action.
     */
-    private float timeScale_;
-
-    public float getTimeScale() {
-        return timeScale_;
-    }
-
-    public void setTimeScale(float ts) {
-        timeScale_ = ts;
-    }
+    private float timeScale_ = 1.0f;
 
     private static CCScheduler _sharedScheduler = null;
+
+    private CCScheduler() {}
 
     /** returns a shared instance of the Scheduler */
     public static CCScheduler sharedScheduler() {
@@ -111,193 +94,57 @@ public class CCScheduler {
         _sharedScheduler = null;
     }
 
-    private CCScheduler() {
-        timeScale_ = 1.0f;
-
-        // used to trigger CCTimer#update
-        updateSelector = "update";
-//        try {
-//			impMethod = CCTimer.class.getMethod(updateSelector, Float.TYPE);
-//    	} catch (NoSuchMethodException e) {
-//    		impMethod = null;
-//    		e.printStackTrace();
-//    	}
-
-        // updates with priority
-        updates0   = new ArrayList<tListEntry>();
-        updatesNeg = new ArrayList<tListEntry>();
-        updatesPos = new ArrayList<tListEntry>();
-        hashForUpdates   = new ConcurrentHashMap<Object, tHashSelectorEntry>();
-        hashForSelectors = new ConcurrentArrayHashMap<Object, tHashSelectorEntry>();
-
-        // selectors with interval
-        currentTarget = null;
-        currentTargetSalvaged = false;
+    public float getTimeScale() {
+        return timeScale_;
     }
 
-//    private void removeHashElement(Object key, tHashSelectorEntry element){
-//    	removeHashElement(element);
-//        hashForSelectors.remove(key);
-//    }
-//    
-//    private void removeHashElement(tHashSelectorEntry element)
-//    {
-//    	element.timers.clear();
-//        element.timers = null;
-//        element.target = null;
-//    }
+    public void setTimeScale(float ts) {
+        timeScale_ = ts;
+    }
+
+    private void updateSubscribers(List<UpdateCallback> subscribers, float dt) {
+        for (UpdateCallback e : subscribers) {
+            if( ! e.paused ) {
+                if(e.callback !=null) {
+                    e.callback.update(dt);
+                } else {
+                    try {
+                        e.impMethod.invoke(e.target, dt);
+                    } catch (Exception e1) {
+                        e1.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
+
+    private List<UpdateCallback> updates(int priority) {
+        if (priority > 0) {
+            return updatesPos;
+        } else if (priority < 0) {
+            return updatesNeg;
+        } else {
+            return updates0;
+        }
+    }
 
     /** 'tick' the scheduler.
       You should NEVER call this method, unless you know what you are doing.
     */
     public void tick(float dt) {
-        if( timeScale_ != 1.0f )
-            dt *= timeScale_;
+        dt *= timeScale_;
         
-        currentTargetSalvaged = false;
-        // updates with priority < 0
-        synchronized (updatesNeg) {
-        	int len = updatesNeg.size();
-	        for (int i = 0; i < len; i++) {
-	        	tListEntry e = updatesNeg.get(i);
-	        	currentEntry = e;
-	            if( ! e.paused ) {
-	            	if(e.callback !=null) {
-	            		e.callback.update(dt);
-	            	} else {
-		            	try {
-							e.impMethod.invoke(e.target, dt);
-						} catch (Exception e1) {
-							e1.printStackTrace();
-						}
-	            	}
-	            	if(currentTargetSalvaged) {
-	            		updatesNeg.remove(i);
-	            		i--;
-	            		len--;
-	            		currentTargetSalvaged = false;
-	            	}
-	            }
-	        }
-	        currentEntry = null;
-        }
+        updateSubscribers(updatesNeg, dt);
+        updateSubscribers(updates0, dt);
+        updateSubscribers(updatesPos, dt);
 
-        // updates with priority == 0
-        synchronized (updates0) {
-        	int len = updates0.size();
-	        for(int i=0; i < len; ++i) {
-	        	tListEntry e = updates0.get(i);
-	        	currentEntry = e;
-	            if( ! e.paused ) {
-	            	if(e.callback !=null) {
-	            		e.callback.update(dt);
-	            	} else {
-		                try {
-							e.impMethod.invoke(e.target, dt);
-						} catch (Exception e1) {
-							// TODO Auto-generated catch block
-							e1.printStackTrace();
-						}
-	            	}
-	            	if(currentTargetSalvaged) {
-	            		updates0.remove(i);
-	            		i--;
-	            		len--;
-	            		currentTargetSalvaged = false;
-	            	}
-	            }
-	        }
-	        currentEntry = null;
-        }
-        
-        // updates with priority > 0
-        synchronized (updatesPos) {
-        	int len = updatesPos.size();
-	        for (int i=0; i < len; i++) {
-	        	tListEntry e = updatesPos.get(i);
-	        	currentEntry = e;
-	            if( ! e.paused ) {
-	            	if(e.callback !=null) {
-	            		e.callback.update(dt);
-	            	} else {
-		                try {
-							e.impMethod.invoke(e.target, dt);
-						} catch (Exception e1) {
-							e1.printStackTrace();
-						}
-	            	}
-	            	if(currentTargetSalvaged) {
-	            		updatesPos.remove(i);
-	            		i--;
-	            		len--;
-	            		currentTargetSalvaged = false;
-	            	}
-	            }
-	        }
-	        currentEntry = null;
-        }
-        
-        for(ConcurrentArrayHashMap<Object, tHashSelectorEntry>.Entry e = hashForSelectors.firstValue();
-        	e != null; e = hashForSelectors.nextValue(e)) {
-        	tHashSelectorEntry elt = e.getValue();
-
-        	currentTarget = elt;
-            currentTargetSalvaged = false;
-
-            if( ! currentTarget.paused && elt.timers != null) {
-                // The 'timers' ccArray may change while inside this loop.
-                for( elt.timerIndex = 0; elt.timerIndex < elt.timers.size(); elt.timerIndex++) {
-                    elt.currentTimer = elt.timers.get(elt.timerIndex);
-                    elt.currentTimerSalvaged = false;
-
-                    elt.currentTimer.update(dt);
-
-                    if( elt.currentTimerSalvaged ) {
-                        // The currentTimer told the remove itself. To prevent the timer from
-                        // accidentally deallocating itself before finishing its step, we retained
-                        // it. Now that step is done, it's safe to release it.
-                        elt.currentTimer = null;
-                    }
-                    
-                    elt.currentTimer = null;
-                }			
+        for (TimerSchedules elt : hashForSelectors.values()) {
+            if (!elt.paused) {
+                final List<CCTimer> timersCopy = elt.timers;
+                for (CCTimer timer : timersCopy) {
+                    timer.update(dt);
+                }
             }
-	            
-	            // elt, at this moment, is still valid
-	            // so it is safe to ask this here (issue #490)
-	            // elt=elt->hh.next;
-	            
-	            // only delete currentTarget if no actions were scheduled during the cycle (issue #481)
-            if( currentTargetSalvaged && currentTarget.timers.isEmpty()) {
-//            	removeHashElement(elt);
-            	hashForSelectors.remove(elt.target);
-                // [self removeHashElement:currentTarget];
-            }
-        }
-        currentTarget = null;
-//        }
-    }
-
-    static class SchedulerTimerAlreadyScheduled extends RuntimeException {
-
-		/**
-		 * 
-		 */
-		private static final long serialVersionUID = 5996803998420105321L;
-
-		public SchedulerTimerAlreadyScheduled(String reason) {
-            super(reason);
-        }
-    }
-
-    static class SchedulerTimerNotFound extends RuntimeException {
-        /**
-		 * 
-		 */
-		private static final long serialVersionUID = -1912889437889458701L;
-
-		public SchedulerTimerNotFound(String reason) {
-            super(reason);
         }
     }
 
@@ -309,169 +156,104 @@ public class CCScheduler {
     */
     public void schedule(String selector, Object target, float interval, boolean paused) {
         assert selector != null: "Argument selector must be non-nil";
-        assert target != null: "Argument target must be non-nil";	
-
-        tHashSelectorEntry element = hashForSelectors.get(target);
-
-        if( element == null ) {
-            element = new tHashSelectorEntry();
-            element.target = target;
-            hashForSelectors.put(target, element);
-            // Is this the 1st element ? Then set the pause level to all the selectors of this target
-            element.paused = paused;
-
-        } else {
-            assert element.paused == paused : "CCScheduler. Trying to schedule a selector with a pause value different than the target";
-        }
-
-        if( element.timers == null) {
-            element.timers = new ArrayList<CCTimer>();
-        }/* else if( element.timers.size() == element.timers )
-            ccArrayDoubleCapacity(element->timers);
-		*/
-        CCTimer timer = new CCTimer(target, selector, interval);
-        element.timers.add(timer);
+        addTimer(target, new CCTimer(target, selector, interval), paused);
     }
     
     /*
      * This is java way version, uses interface based callbacks. UpdateCallback in this case.
      * It would be preffered solution. It is more polite to Java, GC, and obfuscation.  
      */
-    public void schedule(UpdateCallback callback, Object target, float interval, boolean paused) {
+    public void schedule(org.cocos2d.actions.UpdateCallback callback, Object target, float interval, boolean paused) {
         assert callback != null: "Argument callback must be non-nil";
-        assert target != null: "Argument target must be non-nil";	
+        addTimer(target, new CCTimer(target, callback, interval), paused);
+    }
 
-        tHashSelectorEntry element = hashForSelectors.get(target);
+    private void addTimer(Object target, CCTimer timer, boolean paused) {
+        assert target != null: "Argument target must be non-nil";
 
-        if( element == null ) {
-            element = new tHashSelectorEntry();
+        TimerSchedules element = hashForSelectors.get(target).toNull();
+        if (element == null) {
+            element = new TimerSchedules();
             element.target = target;
-            hashForSelectors.put(target, element);
+            hashForSelectors.set(target, element);
             // Is this the 1st element ? Then set the pause level to all the selectors of this target
             element.paused = paused;
-
         } else {
             assert element.paused == paused : "CCScheduler. Trying to schedule a selector with a pause value different than the target";
         }
 
-        if( element.timers == null) {
-            element.timers = new ArrayList<CCTimer>();
-        }/* else if( element.timers.size() == element.timers )
-            ccArrayDoubleCapacity(element->timers);
-		*/
-        CCTimer timer = new CCTimer(target, callback, interval);
-        element.timers.add(timer);
+        element.timers = element.timers.snoc(timer);
     }
 
     /** Unshedules a selector for a given target.
      If you want to unschedule the "update", use unscheudleUpdateForTarget.
      @since v0.99.3
     */
-    public void unschedule(String selector, Object target) {
-        // explicity handle nil arguments when removing an object
-        if( target==null || selector==null)
+    public void unschedule(final String selector, Object target) {
+        if (selector == null) {
             return;
-
-        assert target != null: "Target MUST not be null";
-        assert selector != null: "Selector MUST not be null";
-
-        tHashSelectorEntry element = hashForSelectors.get(target);
-        if( element != null ) {
-            for( int i=0; i< element.timers.size(); i++ ) {
-                CCTimer timer = element.timers.get(i);
-
-                if(selector.equals(timer.getSelector())) {
-                    if( timer == element.currentTimer && !element.currentTimerSalvaged ) {                        
-                        element.currentTimerSalvaged = true;
-                    }
-                    	
-                    element.timers.remove(i);
-
-                    // update timerIndex in case we are in tick:, looping over the actions
-                    if( element.timerIndex >= i )
-                        element.timerIndex--;
-
-                    if( element.timers.isEmpty()) {
-                        if( currentTarget == element ) {
-                            currentTargetSalvaged = true;						
-                        } else {
-                        	hashForSelectors.remove(element.target);
-//                        	this.removeHashElement(element.target, element);
-                        }
-                    }
-                    return;
-                }
-            }
         }
 
-        // Not Found
-        //	NSLog(@"CCScheduler#unscheduleSelector:forTarget: selector not found: %@", selString);
+        unschedule(target, new F<CCTimer, Boolean>() {
+            @Override
+            public Boolean f(CCTimer timer) {
+                return selector.equals(timer.getSelector());
+            }
+        });
     }
     
     /*
      * This is java way version, uses interface based callbacks. UpdateCallback in this case.
      * It would be preffered solution. It is more polite to Java, GC, and obfuscation.  
      */
-    public void unschedule(UpdateCallback callback, Object target) {
-        // explicity handle nil arguments when removing an object
-        if( target==null || callback==null)
+    public void unschedule(final org.cocos2d.actions.UpdateCallback callback, Object target) {
+        if (callback == null) {
             return;
+        }
 
-        assert target != null: "Target MUST not be null";
-        assert callback != null: "Selector MUST not be null";
+        unschedule(target, new F<CCTimer, Boolean>() {
+            @Override
+            public Boolean f(CCTimer timer) {
+                return timer.getCallback() == callback;
+            }
+        });
+    }
 
-        tHashSelectorEntry element = hashForSelectors.get(target);
-        if( element != null ) {
-            for( int i=0; i< element.timers.size(); i++ ) {
-                CCTimer timer = element.timers.get(i);
+    private void unschedule(Object target, F<CCTimer, Boolean> timerPredicate) {
+        if (target == null) {
+            return;
+        }
 
-                if(callback == timer.getCallback()) {
-                    if( timer == element.currentTimer && !element.currentTimerSalvaged ) {                        
-                        element.currentTimerSalvaged = true;
-                    }
-                    	
-                    element.timers.remove(i);
+        final TimerSchedules element = hashForSelectors.get(target).toNull();
+        if (element != null) {
+            final List<CCTimer> timersCopy = element.timers;
 
-                    // update timerIndex in case we are in tick:, looping over the actions
-                    if( element.timerIndex >= i )
-                        element.timerIndex--;
+            for (CCTimer timer : timersCopy) {
+                if (timerPredicate.f(timer)) {
+                    element.timers = element.timers.delete(timer, Equal.<CCTimer>anyEqual());
 
-                    if( element.timers.isEmpty()) {
-                        if( currentTarget == element ) {
-                            currentTargetSalvaged = true;						
-                        } else {
-                        	hashForSelectors.remove(element.target);
-//                        	this.removeHashElement(element.target, element);
-                        }
+                    if (element.timers.isEmpty()) {
+                        hashForSelectors.delete(element.target);
                     }
                     return;
                 }
             }
         }
-
-        // Not Found
-        //	NSLog(@"CCScheduler#unscheduleSelector:forTarget: selector not found: %@", selString);
     }
 
     /** Unschedules the update selector for a given target
       @since v0.99.3
       */
     public void unscheduleUpdate(Object target) {
-        if( target == null )
+        if (target == null) {
             return;
-        tHashSelectorEntry entry = hashForUpdates.get(target);
-        if ( entry == null )
-        	return;
+        }
 
-        synchronized (entry.list) {
-        	if(currentEntry==entry.entry) {
-        		currentTargetSalvaged = true;
-        	} else {
-        		entry.list.remove(entry.entry);
-        	}
-		}
-        
-        hashForUpdates.remove(target);
+        final Option<TimerSchedules> entry = hashForUpdates.get(target);
+        if (entry.isSome()) {
+            updates(entry.some().entry.priority).delete(entry.some().entry, Equal.<UpdateCallback>anyEqual());
+        }
+        hashForUpdates.delete(target);
     }
 
     /** Unschedules all selectors for a given target.
@@ -479,33 +261,33 @@ public class CCScheduler {
      @since v0.99.3
     */
 	public void unscheduleAllSelectors(Object target) {
-        // TODO Auto-generated method stub
-        // explicit nil handling
         if( target == null )
             return;
 
-        // Custom Selectors
-        tHashSelectorEntry element = hashForSelectors.get(target);
-
+        TimerSchedules element = hashForSelectors.get(target).toNull();
         if( element != null) {
-            if(!element.currentTimerSalvaged ) {
-                // element.currentTimer retain;
-                element.currentTimerSalvaged = true;
-            }
-            element.timers.clear();
-            // ccArrayRemoveAllObjects(element->timers);
-            if( currentTarget == element )
-                currentTargetSalvaged = true;
-            else {
-            	hashForSelectors.remove(element.target);
-//            	this.removeHashElement(element.target, element);
-                // [self removeHashElement:element];
-            }
+            element.timers = List.nil();
+            hashForSelectors.delete(element.target);
         }
 
-        // Update Selector
         this.unscheduleUpdate(target);
 	}
+
+    private final F<TimerSchedules, Unit> unscheduleAllSelectors = new F<TimerSchedules, Unit>() {
+        @Override
+        public Unit f(TimerSchedules element) {
+            unscheduleAllSelectors(element.target);
+            return null;
+        }
+    };
+
+    private final F<UpdateCallback,Unit> unscheduleUpdate = new F<UpdateCallback, Unit>() {
+        @Override
+        public Unit f(UpdateCallback entry) {
+            unscheduleUpdate(entry.target);
+            return null;
+        }
+    };
 
     /** Unschedules all selectors from all targets.
       You should NEVER call this method, unless you know what you are doing.
@@ -513,25 +295,10 @@ public class CCScheduler {
       @since v0.99.3
       */
     public void unscheduleAllSelectors() {
-        // Custom Selectors
-        for(ConcurrentArrayHashMap<Object, tHashSelectorEntry>.Entry e = hashForSelectors.firstValue();
-    				e != null; e = hashForSelectors.nextValue(e)) {
-        	tHashSelectorEntry element = e.getValue();
-        	
-            Object target = element.target;
-            unscheduleAllSelectors(target);
-        }
-        
-        // Updates selectors        
-        for (tListEntry entry:updates0) {
-        	unscheduleUpdate(entry.target);
-        }
-        for (tListEntry entry:updatesNeg) {
-        	unscheduleUpdate(entry.target);
-        }
-        for (tListEntry entry:updatesPos) {
-        	unscheduleUpdate(entry.target);
-        }
+        hashForSelectors.values().foreach(unscheduleAllSelectors);
+        updatesNeg.foreach(unscheduleUpdate);
+        updates0.foreach(unscheduleUpdate);
+        updatesPos.foreach(unscheduleUpdate);
     }
 
     /** Resumes the target.
@@ -540,20 +307,7 @@ public class CCScheduler {
      @since v0.99.3
     */
 	public void resume(Object target) {
-        assert  target != null: "target must be non nil";
-
-        // Custom Selectors
-        tHashSelectorEntry element = hashForSelectors.get(target);
-        if( element != null )
-            element.paused = false;
-
-        // Update selector
-        tHashSelectorEntry elementUpdate = hashForUpdates.get(target);
-        if( elementUpdate != null) {
-            assert elementUpdate.target != null: "resumeTarget: unknown error";
-            elementUpdate.setPaused(false);
-        }	
-
+        setPaused(target, false);
 	}
 
     /** Pauses the target.
@@ -562,95 +316,44 @@ public class CCScheduler {
      @since v0.99.3
     */
 	public void pause(Object target) {
-        assert target != null: "target must be non nil";
-
-        // Custom selectors
-        tHashSelectorEntry element = hashForSelectors.get(target);
-        if( element != null )
-            element.paused = true;
-
-        // Update selector
-        tHashSelectorEntry elementUpdate = hashForUpdates.get(target);
-        if( elementUpdate != null) {
-            assert elementUpdate.target != null:"pauseTarget: unknown error";
-            elementUpdate.setPaused(true);
-        }
-
+        setPaused(target, true);
     }
 
-    /** Schedules the 'update' selector for a given target with a given priority.
-      The 'update' selector will be called every frame.
-      The lower the priority, the earlier it is called.
-      @since v0.99.3
-    */
-	public void scheduleUpdate(Object target, int priority, boolean paused) {
-        // TODO Auto-generated method stub
-        if (ccConfig.COCOS2D_DEBUG >= 1) {
-        	tHashSelectorEntry hashElement = hashForUpdates.get(target);
-            assert hashElement == null:"CCScheduler: You can't re-schedule an 'update' selector'. Unschedule it first";
+    private void setPaused(Object target, boolean isPaused) {
+        assert target != null: "target must be non nil";
+
+        Option<TimerSchedules> element = hashForSelectors.get(target);
+        if (element.isSome()) {
+            element.some().paused = isPaused;
         }
 
-        // most of the updates are going to be 0, that's why there
-        // is an special list for updates with priority 0
-        if( priority == 0 ) {
-        	this.append(updates0, target, paused);
-        } else if( priority < 0 ) {
-        	this.priority(updatesNeg, target, priority, paused);
+        Option<TimerSchedules> elementUpdate = hashForUpdates.get(target);
+        if (elementUpdate.isSome()) {
+            elementUpdate.some().setPaused(isPaused);
+        }
+    }
+
+    /**
+     *  Schedules the 'update' selector for a given target with a given priority. The 'update' selector will be called every frame.
+     * @param target an UpdateCallback instance or a POJO with <code>public void update(float dt)</code> method
+     * @param priority etermines the invocation order. Positive, zero and negative are called separately in the specified order.
+     * @param paused initial state of the pause flag
+     *    @since v0.99.3
+     */
+	public void scheduleUpdate(Object target, int priority, boolean paused) {
+        if (ccConfig.COCOS2D_DEBUG >= 1) {
+            assert hashForUpdates.get(target).isNone() :"CCScheduler: You can't re-schedule an 'update' selector'. Unschedule it first";
+        }
+
+        if (priority == 0) {
+        	updates0 = append(updates0, target, paused);
+        } else if (priority < 0) {
+        	updatesNeg = priority(updatesNeg, target, priority, paused);
         } else { // priority > 0
-        	this.priority(updatesPos, target, priority, paused);
+        	updatesPos = priority(updatesPos, target, priority, paused);
         }
 	}
 	
-    /*
-     * This is java way version, uses interface based callbacks. UpdateCallback in this case.
-     * It would be preffered solution. It is more polite to Java, GC, and obfuscation. 
-     * Target class must implement UpdateCallback or scheduleUpdate will be used.
-     */
-	public void scheduleUpdate(UpdateCallback target, int priority, boolean paused) {
-        // TODO Auto-generated method stub
-        if (ccConfig.COCOS2D_DEBUG >= 1) {
-        	tHashSelectorEntry hashElement = hashForUpdates.get(target);
-            assert hashElement == null:"CCScheduler: You can't re-schedule an 'update' selector'. Unschedule it first";
-        }
-
-        // most of the updates are going to be 0, that's way there
-        // is an special list for updates with priority 0
-        if( priority == 0 ) {
-        	this.append(updates0, target, paused);
-        } else if( priority < 0 ) {
-        	this.priority(updatesNeg, target, priority, paused);
-        } else { // priority > 0
-        	this.priority(updatesPos, target, priority, paused);
-        }
-	}
-
-    /** schedules a Timer.
-     It will be fired in every frame.
-     
-     @deprecated Use scheduleSelector:forTarget:interval:paused instead. Will be removed in 1.0
-    */
-    public void scheduleTimer(CCTimer timer) {
-        assert false: "Not implemented. Use scheduleSelector:forTarget:";
-    }
-
-    /** unschedules an already scheduled Timer
-     
-     @deprecated Use unscheduleSelector:forTarget. Will be removed in v1.0
-     */
-    public void unscheduleTimer(CCTimer timer) {
-	    assert false: "Not implemented. Use unscheduleSelector:forTarget:";
-    }
-
-    /** unschedule all timers.
-     You should NEVER call this method, unless you know what you are doing.
-     
-     @deprecated Use scheduleAllSelectors instead. Will be removed in 1.0
-     @since v0.8
-     */
-    public void unscheduleAllTimers() {
-	    assert false:"Not implemented. Use unscheduleAllSelectors";
-    }
-
     @Override
     public void finalize () throws Throwable  {
         unscheduleAllSelectors();
@@ -659,13 +362,13 @@ public class CCScheduler {
         super.finalize();
     }
 
-    public void append(ArrayList<tListEntry> list, Object target, boolean paused) {
-        tListEntry listElement = new tListEntry();
+    public List<UpdateCallback> append(List<UpdateCallback> list, Object target, boolean paused) {
+        UpdateCallback listElement = new UpdateCallback();
 
         listElement.target = target;
         listElement.paused = paused;
-        if(target instanceof UpdateCallback) {
-        	listElement.callback = (UpdateCallback)target;
+        if(target instanceof org.cocos2d.actions.UpdateCallback) {
+        	listElement.callback = (org.cocos2d.actions.UpdateCallback)target;
         } else {
             try {
     			listElement.impMethod = target.getClass().getMethod(updateSelector, Float.TYPE);
@@ -674,26 +377,33 @@ public class CCScheduler {
         	}       	
         }
 
-		synchronized (list) {
-			list.add(listElement);			
-		}
+        final List<UpdateCallback> newList = list.snoc(listElement);
 
         // update hash entry for quicker access
-        tHashSelectorEntry hashElement = new tHashSelectorEntry();
+        TimerSchedules hashElement = new TimerSchedules();
         hashElement.target = target;
-        hashElement.list = list;
         hashElement.entry = listElement;
-        hashForUpdates.put(target, hashElement);
+        hashForUpdates.set(target, hashElement);
+        return newList;
     }
 
-    public void priority(ArrayList<tListEntry> list, Object target, int priority, boolean paused) {
-        tListEntry listElement = new tListEntry();
+    private final F<UpdateCallback, Integer> getPriority = new F<UpdateCallback, Integer>() {
+        @Override
+        public Integer f(UpdateCallback entry) {
+            return entry.priority;
+        }
+    };
+
+    private final Ord<UpdateCallback> priorityOrd = Ord.intOrd.comap(getPriority);
+
+    public List<UpdateCallback> priority(List<UpdateCallback> list, Object target, int priority, boolean paused) {
+        UpdateCallback listElement = new UpdateCallback();
 
         listElement.target = target;
         listElement.priority = priority;
         listElement.paused = paused;
-        if(target instanceof UpdateCallback) {
-        	listElement.callback = (UpdateCallback)target;
+        if(target instanceof org.cocos2d.actions.UpdateCallback) {
+        	listElement.callback = (org.cocos2d.actions.UpdateCallback)target;
         } else {
 	        try {
 				listElement.impMethod = target.getClass().getMethod(updateSelector, Float.TYPE);
@@ -701,34 +411,13 @@ public class CCScheduler {
         		e.printStackTrace();
         	}
         }
-		
-		synchronized (list) {
-			if(list.isEmpty()) {
-				list.add(listElement);
-			} else {
-				boolean added = false;		
-				
-				int len = list.size();
-				for( int i = 0; i < len; i++ ) {
-					tListEntry elem = list.get(i);
-					if( priority < elem.priority ) {
-						list.add(i, listElement);
-						added = true;
-						break;
-					}
-				}
-				
-				// Not added? priority has the higher value. Append it.
-				if( !added )
-					list.add(listElement);
-			}
-		}
 
-        tHashSelectorEntry hashElement = new tHashSelectorEntry();
+        final List<UpdateCallback> newList = list.snoc(listElement).sort(priorityOrd);
+
+        TimerSchedules hashElement = new TimerSchedules();
         hashElement.target = target;
-        hashElement.list = list;
-        hashElement.entry = listElement;  
-        hashForUpdates.put(target, hashElement);
+        hashElement.entry = listElement;
+        hashForUpdates.set(target, hashElement);
+        return newList;
     }
 }
-
