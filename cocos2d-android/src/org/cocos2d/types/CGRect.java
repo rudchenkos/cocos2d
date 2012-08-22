@@ -301,10 +301,10 @@ public class CGRect {
     }
 
     public float maxX() {
-        return origin.x + size.width;
+        return origin.x + size.width - 1;
     }
 
     public float maxY() {
-        return origin.y + size.height;
+        return origin.y + size.height - 1;
     }
 }
